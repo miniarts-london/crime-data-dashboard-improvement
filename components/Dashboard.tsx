@@ -13,6 +13,7 @@ import { MAX_REQUESTS } from "@/config/config";
 import { fetchCrimes, geocodePostcode } from '@/lib/police';
 import { clearQueryString, normalize, updateQueryString } from "@/components/Helper";
 import { createLimiter } from "@/lib/concurrency";
+import { categoryLabel } from "@/lib/theme";
 import SnackBar from "./snackBar";
 import CrimeOverview from "./CrimeOverview";
 import CrimeTable from "./CrimeTable";
@@ -71,6 +72,24 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
     });
     return { total: filteredCrimes.length, categoryCounts, outcomeCounts };
   }, [filteredCrimes]);
+
+  const categoryOptions = useMemo(() => {
+    const labels = new Map<string, string>();
+    for (const crime of crimes) {
+      if (!labels.has(crime.category)) labels.set(crime.category, categoryLabel(crime.category));
+    }
+    return [...labels.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [crimes]);
+
+  const statusOptions = useMemo(() => {
+    const seen = new Set<string>();
+    for (const crime of crimes) seen.add(crime.outcome);
+    return [...seen]
+      .sort((a, b) => a.localeCompare(b))
+      .map((value) => ({ value, label: value }));
+  }, [crimes]);
 
   const runSearch = useCallback(async (postcodes: string[], searchFrom: string, searchTo: string) => {
     const gen = ++searchGen.current;
@@ -221,6 +240,14 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
     setQuickFilters((prev) => ({ ...prev, [field]: prev[field] === value ? null : value }));
   };
 
+  const handleCategoryFilter = (value: string | null) => {
+    setQuickFilters((prev) => ({ ...prev, category: value }));
+  };
+
+  const handleStatusFilter = (value: string | null) => {
+    setQuickFilters((prev) => ({ ...prev, outcome: value }));
+  };
+
   const handleHistorySelect = (postcode: string) => {
     setPostcodes([postcode]);
     setNotice('');
@@ -276,11 +303,17 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
           )}
         </AppBar>
         <Grid container sx={{p:2, pb:0}}>
-          <Grid size={{xs:12, sm:12, md:2}} sx={{p:1}}>
+          <Grid size={{xs:12, sm:12, md:3}} sx={{p:1}}>
             <PostcodeHistory
               entries={history.entries} 
               onSelect={handleHistorySelect} 
-              onRemove={history.remove} 
+              onRemove={history.remove}
+              categoryOptions={categoryOptions}
+              statusOptions={statusOptions}
+              category={quickFilters.category}
+              status={quickFilters.outcome}
+              onCategoryChange={handleCategoryFilter}
+              onStatusChange={handleStatusFilter}
             />
           </Grid>
           <Grid size={{xs:12, sm:12, md:'grow'}} sx={{ p:1 }}>

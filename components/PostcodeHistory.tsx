@@ -2,14 +2,36 @@
 
 import { Box, Chip, Typography, Paper } from '@mui/material';
 import type { HistoryEntry } from '@/lib/usePostcodeHistory';
+import FilterSelect from './select';
+
+export interface FilterOption {
+  value: string;
+  label: string;
+}
 
 interface PostcodeHistoryProps {
   entries: HistoryEntry[];
   onSelect: (postcode: string) => void;
   onRemove: (postcode: string) => void;
+  categoryOptions: FilterOption[];
+  statusOptions: FilterOption[];
+  category: string | null;
+  status: string | null;
+  onCategoryChange: (value: string | null) => void;
+  onStatusChange: (value: string | null) => void;
 }
 
-export default function PostcodeHistory({ entries, onSelect, onRemove }: PostcodeHistoryProps) {
+export default function PostcodeHistory({
+  entries,
+  onSelect,
+  onRemove,
+  categoryOptions,
+  statusOptions,
+  category,
+  status,
+  onCategoryChange,
+  onStatusChange,
+}: PostcodeHistoryProps) {
   return (
     <Paper variant="outlined" sx={{ height: '100%' }}>
       <Box sx={{ p: 2, textAlign: 'left' }}>
@@ -49,6 +71,23 @@ export default function PostcodeHistory({ entries, onSelect, onRemove }: Postcod
             ))}
           </Box>
         )}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 2 }}>
+          <Typography variant="overline" color="primary" component="p" sx={{ m: 0 }}>
+            Filters
+          </Typography>
+          <FilterSelect
+            label="Category"
+            value={category}
+            options={categoryOptions}
+            onChange={onCategoryChange}
+          />
+          <FilterSelect
+            label="Status"
+            value={status}
+            options={statusOptions}
+            onChange={onStatusChange}
+          />
+        </Box>
       </Box>
     </Paper>
   );

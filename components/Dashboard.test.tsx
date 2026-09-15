@@ -158,4 +158,30 @@ describe('Dashboard', () => {
     expect(await screen.findByRole('heading', { level: 3, name: '1' })).toBeInTheDocument();
     expect(screen.getByText(/filtered by/i)).toBeInTheDocument();
   });
+
+  it('filters from the category and status selects in the searched postcodes panel', async () => {
+    const user = userEvent.setup();
+    fetchCrimesMock.mockResolvedValue([
+      sampleCrime,
+      {
+        ...sampleCrime,
+        id: 2,
+        category: 'anti-social-behaviour',
+        outcome_status: { category: 'Investigation complete', date: '2026-06' },
+      },
+    ]);
+    renderWithProviders(<Dashboard initialParams={emptyParams} />);
+
+    await searchPostcode(user);
+    expect(await screen.findByRole('heading', { level: 3, name: '2' })).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('Category'));
+    await user.click(screen.getByRole('option', { name: 'Burglary' }));
+    expect(await screen.findByRole('heading', { level: 3, name: '1' })).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('Status'));
+    await user.click(screen.getByRole('option', { name: 'Under investigation' }));
+    expect(await screen.findByRole('heading', { level: 3, name: '1' })).toBeInTheDocument();
+    expect(screen.getByText(/filtered by/i)).toBeInTheDocument();
+  });
 });

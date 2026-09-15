@@ -26,7 +26,6 @@ npm run lint
 
 - **Searches are capped at 40 postcode/month combinations, with four requests in flight.** That avoids hammering public APIs and the police.uk 10k-crime 503. What it gives up: you cannot run a wide date range across many postcodes in one go.
 
-- **Filtering is click-to-toggle on table cells and overview bars, with no separate filter panel.** Category and outcome bars in `CrimeOverview` share the same `quickFilters` state as the table. What it gives up: no way to combine filters from a dedicated control, and the active state is a highlight rather than a full filter UI.
 
 ## What I'd do with more time
 
