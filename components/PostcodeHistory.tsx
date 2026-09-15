@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { Box, Chip, Typography, Paper } from '@mui/material';
 import type { HistoryEntry } from '@/lib/usePostcodeHistory';
 import FilterSelect from './select';
@@ -21,7 +22,7 @@ interface PostcodeHistoryProps {
   onStatusChange: (value: string | null) => void;
 }
 
-export default function PostcodeHistory({
+function PostcodeHistory({
   entries,
   onSelect,
   onRemove,
@@ -92,3 +93,5 @@ export default function PostcodeHistory({
     </Paper>
   );
 }
+
+export default memo(PostcodeHistory);

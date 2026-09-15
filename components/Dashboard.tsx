@@ -250,23 +250,26 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
     setQuickFilters((prev) => ({ ...prev, [field]: prev[field] === value ? null : value }));
   }, []);
 
-  const handleCategoryFilter = (value: string | null) => {
+  const handleCategoryFilter = useCallback((value: string | null) => {
     setQuickFilters((prev) => ({ ...prev, category: value }));
-  };
+  }, []);
 
-  const handleStatusFilter = (value: string | null) => {
+  const handleStatusFilter = useCallback((value: string | null) => {
     setQuickFilters((prev) => ({ ...prev, outcome: value }));
-  };
+  }, []);
 
-  const handleHistorySelect = (postcode: string) => {
-    setPostcodes([postcode]);
-    setNotice('');
-    const useFrom = from || currentMonth();
-    const useTo = to || currentMonth();
-    setFrom(useFrom);
-    setTo(useTo);
-    runSearch([postcode], useFrom, useTo);
-  };
+  const handleHistorySelect = useCallback(
+    (postcode: string) => {
+      setPostcodes([postcode]);
+      setNotice('');
+      const useFrom = from || currentMonth();
+      const useTo = to || currentMonth();
+      setFrom(useFrom);
+      setTo(useTo);
+      runSearch([postcode], useFrom, useTo);
+    },
+    [from, to, runSearch]
+  );
 
   return (
     <>
