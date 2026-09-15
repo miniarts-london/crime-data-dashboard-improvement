@@ -4,18 +4,43 @@ import { Box, Paper, Typography, Grid } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { colorFor, categoryLabel, bucketFor } from '@/lib/theme';
 import { useColorMode } from './ContextRoot/Providers';
+import type { QuickFilters } from '@/types/dashboard';
 
 interface BarRowProps {
   label: string;
   count: number;
   max: number;
   color: string;
+  active?: boolean;
+  onClick?: () => void;
 }
 
-function BarRow({ label, count, max, color }: BarRowProps) {
+function BarRow({ label, count, max, color, active, onClick }: BarRowProps) {
   const pct = max > 0 ? Math.max((count / max) * 100, 3) : 0;
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.4 }}>
+    <Box
+      component="button"
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      title={onClick ? `Click to filter by ${label}` : undefined}
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        py: 0.4,
+        px: 0,
+        width: '100%',
+        border: 0,
+        bgcolor: active ? 'action.selected' : 'transparent',
+        cursor: onClick ? 'pointer' : 'default',
+        borderRadius: 1,
+        textAlign: 'left',
+        font: 'inherit',
+        color: 'inherit',
+        '&:hover': onClick ? { bgcolor: 'action.hover' } : undefined,
+      }}
+    >
       <Typography variant="body2" noWrap title={label} sx={{ width: 200, flexShrink: 0 }}>
         {label}
       </Typography>
@@ -37,9 +62,17 @@ interface CrimeOverviewProps {
   total: number;
   categoryCounts: Record<string, number>;
   outcomeCounts: Record<string, number>;
+  onQuickFilter?: (field: keyof QuickFilters, value: string) => void;
+  activeFilters?: QuickFilters;
 }
 
-export default function CrimeOverview({ total, categoryCounts, outcomeCounts }: CrimeOverviewProps) {
+export default function CrimeOverview({
+  total,
+  categoryCounts,
+  outcomeCounts,
+  onQuickFilter,
+  activeFilters,
+}: CrimeOverviewProps) {
   const { mode } = useColorMode();
   const theme = useTheme();
   const outcomeBarColor = theme.palette.secondary.main;
@@ -78,8 +111,11 @@ export default function CrimeOverview({ total, categoryCounts, outcomeCounts }: 
               <BarRow 
                 key={cat} 
                 label={categoryLabel(cat)} 
-                count={count} max={maxCategory} 
-                color={colorFor(bucketFor(cat), mode)} 
+                count={count}
+                max={maxCategory} 
+                color={colorFor(bucketFor(cat), mode)}
+                active={activeFilters?.category === cat}
+                onClick={onQuickFilter ? () => onQuickFilter('category', cat) : undefined}
               />
             ))}
           </Box>
@@ -102,7 +138,9 @@ export default function CrimeOverview({ total, categoryCounts, outcomeCounts }: 
                 label={outcome} 
                 count={count} 
                 max={maxOutcome} 
-                color={outcomeBarColor} 
+                color={outcomeBarColor}
+                active={activeFilters?.outcome === outcome}
+                onClick={onQuickFilter ? () => onQuickFilter('outcome', outcome) : undefined}
               />
             ))}
           </Box>

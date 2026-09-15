@@ -68,6 +68,7 @@ describe('Dashboard', () => {
 
     expect(await screen.findByRole('heading', { level: 3, name: '1' })).toBeInTheDocument();
     expect(screen.getByText('Whitehall')).toBeInTheDocument();
+    expect(screen.getByText('Crime map mock')).toBeInTheDocument();
     expect(screen.getByRole('list')).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'SW1A 1AA' }).length).toBeGreaterThan(0);
     expect(geocodePostcodeMock).toHaveBeenCalledWith('SW1A 1AA');
@@ -98,7 +99,7 @@ describe('Dashboard', () => {
     });
     expect(screen.getByRole('heading', { level: 3, name: '0' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'SW1A 1AA' })).not.toBeInTheDocument();
-    expect(screen.getAllByText('No data yet - run a search above.')).toHaveLength(2);
+    expect(screen.getAllByText('No data yet - run a search above.')).toHaveLength(3);
     expect(window.location.search).toBe('');
     expect(window.localStorage.getItem('crime-dashboard:postcode-history')).toBe('[]');
   });
@@ -130,6 +131,29 @@ describe('Dashboard', () => {
     expect(await screen.findByRole('heading', { level: 3, name: '2' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Burglary' }));
+
+    expect(await screen.findByRole('heading', { level: 3, name: '1' })).toBeInTheDocument();
+    expect(screen.getByText(/filtered by/i)).toBeInTheDocument();
+  });
+
+  it('filters when a category bar in the overview is clicked', async () => {
+    const user = userEvent.setup();
+    fetchCrimesMock.mockResolvedValue([
+      sampleCrime,
+      {
+        ...sampleCrime,
+        id: 2,
+        category: 'anti-social-behaviour',
+        outcome_status: { category: 'Investigation complete', date: '2026-06' },
+      },
+    ]);
+    renderWithProviders(<Dashboard initialParams={emptyParams} />);
+
+    await searchPostcode(user);
+    expect(await screen.findByRole('heading', { level: 3, name: '2' })).toBeInTheDocument();
+
+    const categoryBars = screen.getAllByRole('button', { name: /burglary/i });
+    await user.click(categoryBars[0]);
 
     expect(await screen.findByRole('heading', { level: 3, name: '1' })).toBeInTheDocument();
     expect(screen.getByText(/filtered by/i)).toBeInTheDocument();

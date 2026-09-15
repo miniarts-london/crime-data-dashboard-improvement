@@ -1,44 +1,27 @@
-import {Alert, Snackbar} from '@mui/material'
+import { Alert, Snackbar } from '@mui/material';
 
 interface SnackBarProps {
-  openSnackbar: any
-  message: any
-  handleCloseSnackbar?: any
+  openSnackbar: boolean;
+  message: string;
+  handleCloseSnackbar?: () => void;
 }
 
-export default function SnackBar({openSnackbar, message, handleCloseSnackbar}: SnackBarProps) {
+export default function SnackBar({ openSnackbar, message, handleCloseSnackbar }: SnackBarProps) {
   const onClose = (_event?: unknown, reason?: string) => {
-    if (reason === 'clickaway') return
-    handleCloseSnackbar?.()
-  }
+    if (reason === 'clickaway') return;
+    handleCloseSnackbar?.();
+  };
 
   return (
-    <>
-      {message && <Snackbar
-        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
-        open={openSnackbar}
-        onClose={onClose}
-        key={'top' + 'left'}
-        autoHideDuration={8000}
-      >
-        <Alert
-          onClose={onClose}
-          severity={message.success?`success`:'error'}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {typeof message === 'string'?
-            <>{message}</>
-            :
-            message?.map((item: string, i: number) => {
-              return(
-                <span key={i}>{item}<br/></span>
-              )
-            })
-          }
-        </Alert>
-      </Snackbar>}
-    </>
-  )
+    <Snackbar
+      anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+      open={openSnackbar && Boolean(message)}
+      onClose={onClose}
+      autoHideDuration={8000}
+    >
+      <Alert onClose={onClose} severity="error" variant="filled" sx={{ width: '100%' }}>
+        {message}
+      </Alert>
+    </Snackbar>
+  );
 }
-

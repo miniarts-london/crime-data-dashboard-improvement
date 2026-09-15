@@ -1,25 +1,19 @@
 // Live "type SW1A and see real SW1A postcodes" suggestions for the search
-// bar, backed by postcodes.io's free autocomplete endpoint. This is
-// deliberately separate from lib/police.ts: getthedata.com (used there for
-// the actual postcode -> lat/lng lookup that powers a search) only supports
-// an exact, single-postcode lookup, so it can't drive a prefix-based
-// autocomplete on its own.
-const AUTOCOMPLETE_BASE =
-  process.env.NEXT_PUBLIC_POSTCODE_AUTOCOMPLETE_BASE_URL || 'https://api.postcodes.io/postcodes';
+// bar. The browser talks to our Route Handler; that handler calls postcodes.io.
+// getthedata.com (used for the actual postcode -> lat/lng lookup) only supports
+// an exact, single-postcode lookup, so it can't drive prefix autocomplete.
+const AUTOCOMPLETE_PATH = '/api/postcodes/autocomplete';
 
-// Outward code only, e.g. EN1, N1, SW1A. Used to detect "user typed the
-// district and a space" so we don't treat EN1 as a prefix of EN10.
 const OUTCODE_REGEX = /^[A-Z]{1,2}\d[A-Z\d]?$/;
 
 interface AutocompleteResponse {
-  status: number;
   result: string[] | null;
 }
 
 const suggestionCache = new Map<string, string[]>();
 
 async function fetchAutocomplete(query: string, signal?: AbortSignal): Promise<string[]> {
-  const url = `${AUTOCOMPLETE_BASE}/${encodeURIComponent(query)}/autocomplete?limit=10`;
+  const url = `${AUTOCOMPLETE_PATH}?q=${encodeURIComponent(query)}`;
   const res = await fetch(url, { signal });
   if (!res.ok) return [];
   const body: AutocompleteResponse = await res.json();

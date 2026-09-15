@@ -13,13 +13,10 @@ describe('police API helpers', () => {
     vi.resetModules();
   });
 
-  it('geocodes a matching postcode', async () => {
+  it('geocodes a matching postcode via the app proxy', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({
-        status: 'match',
-        data: { postcode: 'SW1A 1AA', latitude: '51.501', longitude: '-0.142' },
-      }),
+      json: async () => ({ lat: 51.501, lng: -0.142, label: 'SW1A 1AA' }),
     });
 
     const { geocodePostcode } = await import('@/lib/police');
@@ -28,15 +25,13 @@ describe('police API helpers', () => {
       lng: -0.142,
       label: 'SW1A 1AA',
     });
+    expect(fetchMock).toHaveBeenCalledWith('/api/postcode/SW1A%201AA');
   });
 
   it('reuses a cached geocode result', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({
-        status: 'match',
-        data: { postcode: 'W1A 1AA', latitude: '51.52', longitude: '-0.14' },
-      }),
+      json: async () => ({ lat: 51.52, lng: -0.14, label: 'W1A 1AA' }),
     });
 
     const { geocodePostcode } = await import('@/lib/police');
@@ -45,14 +40,19 @@ describe('police API helpers', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('treats a 404 crime response as an empty month', async () => {
-    fetchMock.mockResolvedValue({ status: 404, ok: false, json: async () => null });
+  it('treats an empty crime payload as no crimes for that month', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => [] });
     const { fetchCrimes } = await import('@/lib/police');
     await expect(fetchCrimes(51.5, -0.12, '2026-01')).resolves.toEqual([]);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/api/crimes?');
   });
 
-  it('explains a 503 crime response', async () => {
-    fetchMock.mockResolvedValue({ status: 503, ok: false, json: async () => null });
+  it('surfaces a 503 from the crime proxy', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ error: 'too many crimes in this area for one request - try a smaller date range' }),
+    });
     const { fetchCrimes } = await import('@/lib/police');
     await expect(fetchCrimes(51.6, -0.13, '2026-02')).rejects.toThrow(/too many crimes/i);
   });

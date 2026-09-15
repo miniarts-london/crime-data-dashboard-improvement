@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import CrimeOverview from '@/components/CrimeOverview';
 import { renderWithProviders } from '@/test/render';
@@ -32,5 +33,25 @@ describe('CrimeOverview', () => {
     expect(screen.getByText('Under investigation')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
     expect(screen.getByText('1')).toBeInTheDocument();
+  });
+
+  it('requests a quick filter when a category or outcome bar is clicked', async () => {
+    const user = userEvent.setup();
+    const onQuickFilter = vi.fn();
+    renderWithProviders(
+      <CrimeOverview
+        total={3}
+        categoryCounts={{ burglary: 2 }}
+        outcomeCounts={{ 'Under investigation': 3 }}
+        onQuickFilter={onQuickFilter}
+        activeFilters={{ postcode: null, category: null, outcome: null }}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /burglary/i }));
+    await user.click(screen.getByRole('button', { name: /under investigation/i }));
+
+    expect(onQuickFilter).toHaveBeenCalledWith('category', 'burglary');
+    expect(onQuickFilter).toHaveBeenCalledWith('outcome', 'Under investigation');
   });
 });

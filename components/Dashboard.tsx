@@ -121,6 +121,7 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
       if (geocoded.length === 0) {
         setCrimes([]);
         setError(`Couldn't find any of the entered postcodes. ${issues.join('; ')}`);
+        setOpenSnackBar(true);
         return;
       }
 
@@ -145,8 +146,13 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
       if (!stillCurrent()) return;
 
       setCrimes(allRows);
-      if (issues.length) setError(`Some requests had issues: ${issues.join('; ')}`);
-      else if (allRows.length === 0) setError('No crimes found for that search.');
+      if (issues.length) {
+        setError(`Some requests had issues: ${issues.join('; ')}`);
+        setOpenSnackBar(true);
+      } else if (allRows.length === 0) {
+        setError('No crimes found for that search.');
+        setOpenSnackBar(true);
+      }
     } finally {
       if (stillCurrent()) {
         setLoading(false);
@@ -281,7 +287,9 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
             <CrimeOverview 
               total={stats.total} 
               categoryCounts={stats.categoryCounts} 
-              outcomeCounts={stats.outcomeCounts} 
+              outcomeCounts={stats.outcomeCounts}
+              onQuickFilter={handleQuickFilter}
+              activeFilters={quickFilters}
             />
           </Grid>
         </Grid> 
@@ -300,10 +308,18 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
                   </Typography>
                 </Box>
                 <Box sx={{ height: 360, mt: 1, '& .leaflet-container': { height: '100%', width: '100%' } }}>
-                  <CrimeMap
-                    crimes={filteredCrimes}
-                    searchPoints={searchPoints}
-                  />
+                  {searchPoints.length > 0 ? (
+                    <CrimeMap
+                      crimes={filteredCrimes}
+                      searchPoints={searchPoints}
+                    />
+                  ) : (
+                    <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Typography variant="body2" color="text.secondary">
+                        No data yet - run a search above.
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
               </Box>
             </Paper>
@@ -315,7 +331,8 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
                   Crime Table
                   </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Click a postcode, crime type, or outcome status to filter the results
+                  Click a postcode, crime type, or outcome — in the table or the
+                  breakdown above — to filter the results
                 </Typography>
                 <CrimeTable
                   crimes={filteredCrimes} 
