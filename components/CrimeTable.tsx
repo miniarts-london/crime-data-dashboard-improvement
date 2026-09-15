@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { MaterialReactTable, useMaterialReactTable, type MRT_ColumnDef } from 'material-react-table';
 import { Chip, Box } from '@mui/material';
 import dayjs from 'dayjs';
@@ -14,7 +14,7 @@ interface CrimeTableProps {
   activeFilters: QuickFilters;
 }
 
-export default function CrimeTable({ crimes, onQuickFilter, activeFilters }: CrimeTableProps) {
+function CrimeTable({ crimes, onQuickFilter, activeFilters }: CrimeTableProps) {
   const { mode } = useColorMode();
 
   const columns = useMemo<MRT_ColumnDef<CrimeRecord>[]>(
@@ -119,3 +119,5 @@ export default function CrimeTable({ crimes, onQuickFilter, activeFilters }: Cri
     </Box>
   );
 }
+
+export default memo(CrimeTable);

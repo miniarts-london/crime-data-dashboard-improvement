@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { Box, Paper, Typography, Grid } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { colorFor, categoryLabel, bucketFor } from '@/lib/theme';
@@ -66,7 +67,7 @@ interface CrimeOverviewProps {
   activeFilters?: QuickFilters;
 }
 
-export default function CrimeOverview({
+function CrimeOverview({
   total,
   categoryCounts,
   outcomeCounts,
@@ -149,3 +150,5 @@ export default function CrimeOverview({
     </Grid>
   );
 }
+
+export default memo(CrimeOverview);

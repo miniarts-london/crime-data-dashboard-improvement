@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { memo, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Autocomplete, Box, TextField, Button, CircularProgress, Typography } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { type Dayjs } from 'dayjs';
@@ -22,7 +22,7 @@ interface SearchBarProps {
   notice?: string;
 }
 
-export default function SearchBar({
+function SearchBar({
   postcodes,
   onPostcodesChange,
   postcodeOptions,
@@ -232,7 +232,13 @@ export default function SearchBar({
         sx={datePickerSx}
         slotProps={{ textField: { size: 'small', sx: dateFieldSx } }}
       />
-      <Button type="submit" variant="contained" aria-label="Search" disabled={!canSearch} sx={{ height: 40 }}>
+      <Button 
+        type="submit" 
+        variant="contained" 
+        aria-label="Search" 
+        disabled={!canSearch} 
+        sx={{ height: 40 }}
+      >
         {loading ? <CircularProgress size={20} color="inherit" /> : 'Search'}
       </Button>
       <Button
@@ -258,3 +264,5 @@ export default function SearchBar({
     </Box>
   );
 }
+
+export default memo(SearchBar);

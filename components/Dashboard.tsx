@@ -73,6 +73,13 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
     return { total: filteredCrimes.length, categoryCounts, outcomeCounts };
   }, [filteredCrimes]);
 
+  // Stable, memoized so it doesn't create a brand-new array (and defeat
+  // SearchBar's React.memo) on every render, the way .map() would inline.
+  const postcodeOptions = useMemo(
+    () => history.entries.map((e) => e.postcode),
+    [history.entries]
+  );
+
   const categoryOptions = useMemo(() => {
     const labels = new Map<string, string>();
     for (const crime of crimes) {
@@ -192,24 +199,27 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSearchSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    const { valid, invalid } = parsePostcodesInput(postcodes.join(','));
-    if (valid.length === 0) {
-      setNotice('Enter at least one valid UK postcode to search.');
-      return;
-    }
-    setNotice(invalid.length ? `Ignored invalid postcode(s): ${invalid.join(', ')}` : '');
-    // Reflect the validated, deduped, normalized set back into the chips.
-    setPostcodes(valid);
-    const useFrom = from || currentMonth();
-    const useTo = to || currentMonth();
-    setFrom(useFrom);
-    setTo(useTo);
-    runSearch(valid, useFrom, useTo);
-  };
+  const handleSearchSubmit = useCallback(
+    (e: FormEvent) => {
+      e.preventDefault();
+      const { valid, invalid } = parsePostcodesInput(postcodes.join(','));
+      if (valid.length === 0) {
+        setNotice('Enter at least one valid UK postcode to search.');
+        return;
+      }
+      setNotice(invalid.length ? `Ignored invalid postcode(s): ${invalid.join(', ')}` : '');
+      // Reflect the validated, deduped, normalized set back into the chips.
+      setPostcodes(valid);
+      const useFrom = from || currentMonth();
+      const useTo = to || currentMonth();
+      setFrom(useFrom);
+      setTo(useTo);
+      runSearch(valid, useFrom, useTo);
+    },
+    [postcodes, from, to, runSearch]
+  );
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     searchGen.current += 1;
     const month = currentMonth();
     setPostcodes([]);
@@ -225,7 +235,7 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
     setProgress(null);
     history.clear();
     clearQueryString();
-  };
+  }, [history.clear]);
 
   const handleCloseSnackbar = () => {
     setOpenSnackBar(false)
@@ -236,9 +246,9 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
     ([, v]) => v
   );
 
-  const handleQuickFilter = (field: keyof QuickFilters, value: string) => {
+  const handleQuickFilter = useCallback((field: keyof QuickFilters, value: string) => {
     setQuickFilters((prev) => ({ ...prev, [field]: prev[field] === value ? null : value }));
-  };
+  }, []);
 
   const handleCategoryFilter = (value: string | null) => {
     setQuickFilters((prev) => ({ ...prev, category: value }));
@@ -270,7 +280,7 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
             <SearchBar
               postcodes={postcodes}
               onPostcodesChange={setPostcodes}
-              postcodeOptions={history.entries.map((e) => e.postcode)}
+              postcodeOptions={postcodeOptions}
               from={from}
               onFromChange={setFrom}
               to={to}
