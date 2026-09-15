@@ -20,6 +20,7 @@ vi.mock('@/components/Dashboard', () => ({
 describe('Home page', () => {
   it('passes parsed search params into the dashboard', async () => {
     const ui = await Home({
+      params: Promise.resolve({}),
       searchParams: Promise.resolve({
         postcodes: 'SW1A 1AA, not-a-postcode',
         from: '2026-01',
@@ -38,6 +39,7 @@ describe('Home page', () => {
 
   it('defaults missing query params to no postcodes and the current month', async () => {
     const ui = await Home({
+      params: Promise.resolve({}),
       searchParams: Promise.resolve({}),
     });
 
