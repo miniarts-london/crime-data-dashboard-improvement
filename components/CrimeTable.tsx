@@ -32,6 +32,12 @@ function CrimeTable({ crimes, onQuickFilter, activeFilters }: CrimeTableProps) {
               onClick={() => onQuickFilter('postcode', value)}
               title="Click to filter by this postcode"
               sx={{
+                border: 'none',
+                background: 'none',
+                padding: 0,
+                font: 'inherit',
+                color: 'inherit',
+                textAlign: 'inherit',
                 cursor: 'pointer',
                 fontWeight: active ? 700 : 400,
                 textDecoration: active ? 'underline' : 'none',
@@ -88,6 +94,12 @@ function CrimeTable({ crimes, onQuickFilter, activeFilters }: CrimeTableProps) {
               onClick={() => onQuickFilter('outcome', value)}
               title="Click to filter by this outcome status"
               sx={{
+                border: 'none',
+                background: 'none',
+                padding: 0,
+                font: 'inherit',
+                color: 'inherit',
+                textAlign: 'inherit',
                 cursor: 'pointer',
                 fontWeight: active ? 700 : 400,
                 textDecoration: active ? 'underline' : 'none',
