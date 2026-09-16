@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -117,7 +117,7 @@ interface CrimeMapProps {
   searchPoints: SearchPoint[];
 }
 
-export default function CrimeMap({ crimes, searchPoints }: CrimeMapProps) {
+function CrimeMap({ crimes, searchPoints }: CrimeMapProps) {
   const { mode } = useColorMode();
   const [mapKey, setMapKey] = useState(0);
   const searchDivIcon = useMemo(
@@ -179,3 +179,5 @@ export default function CrimeMap({ crimes, searchPoints }: CrimeMapProps) {
     </MapContainer>
   );
 }
+
+export default memo(CrimeMap);
