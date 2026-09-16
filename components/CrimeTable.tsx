@@ -28,7 +28,7 @@ function CrimeTable({ crimes, onQuickFilter, activeFilters }: CrimeTableProps) {
           const active = activeFilters.postcode === value;
           return (
             <Box
-              component="span"
+              component="button"
               onClick={() => onQuickFilter('postcode', value)}
               title="Click to filter by this postcode"
               sx={{
@@ -36,6 +36,7 @@ function CrimeTable({ crimes, onQuickFilter, activeFilters }: CrimeTableProps) {
                 fontWeight: active ? 700 : 400,
                 textDecoration: active ? 'underline' : 'none',
               }}
+              aria-pressed={active}
             >
               {value}
             </Box>
@@ -70,6 +71,7 @@ function CrimeTable({ crimes, onQuickFilter, activeFilters }: CrimeTableProps) {
                 outline: active ? '2px solid currentColor' : 'none',
                 outlineOffset: '1px',
               }}
+              aria-pressed={active}
             />
           );
         },
@@ -82,7 +84,7 @@ function CrimeTable({ crimes, onQuickFilter, activeFilters }: CrimeTableProps) {
           const active = activeFilters.outcome === value;
           return (
             <Box
-              component="span"
+              component="button"
               onClick={() => onQuickFilter('outcome', value)}
               title="Click to filter by this outcome status"
               sx={{
@@ -90,6 +92,7 @@ function CrimeTable({ crimes, onQuickFilter, activeFilters }: CrimeTableProps) {
                 fontWeight: active ? 700 : 400,
                 textDecoration: active ? 'underline' : 'none',
               }}
+              aria-pressed={active}
             >
               {value}
             </Box>
