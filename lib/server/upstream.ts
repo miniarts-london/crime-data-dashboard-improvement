@@ -1,5 +1,15 @@
 import type { GeocodeResult, RawCrime } from '@/types/dashboard';
 
+// Carries the real upstream HTTP status alongside the message, so callers
+// (route handlers) can map it to a response status without having to
+// pattern-match on message text.
+export class UpstreamError extends Error {
+  constructor(message: string, public status: number) {
+    super(message);
+    this.name = 'UpstreamError';
+  }
+}
+
 const POSTCODE_BASE =
   process.env.POSTCODE_API_BASE_URL || 'http://api.getthedata.com/postcode';
 const CRIME_BASE = process.env.CRIME_API_BASE_URL || 'https://data.police.uk/api';
@@ -55,7 +65,10 @@ export async function fetchCrimesUpstream(
     return [];
   }
   if (res.status === 503) {
-    throw new Error('too many crimes in this area for one request - try a smaller date range');
+    throw new UpstreamError(
+      'too many crimes in this area for one request - try a smaller date range',
+      503
+    );
   }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 

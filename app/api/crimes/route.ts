@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchCrimesUpstream } from '@/lib/server/upstream';
+import { fetchCrimesUpstream, UpstreamError } from '@/lib/server/upstream';
 
 const MONTH_REGEX = /^\d{4}-\d{2}$/;
 
@@ -23,8 +23,13 @@ export async function GET(request: Request) {
     const crimes = await fetchCrimesUpstream(lat, lng, date);
     return NextResponse.json(crimes);
   } catch (reason) {
+    // UpstreamError carries the real status the upstream API returned (e.g.
+    // 503 for "too many crimes"), set at the point upstream.ts actually
+    // knows it - not guessed here from the error message's wording.
+    if (reason instanceof UpstreamError) {
+      return NextResponse.json({ error: reason.message }, { status: reason.status });
+    }
     const message = reason instanceof Error ? reason.message : 'Crime lookup failed';
-    const status = /too many crimes/i.test(message) ? 503 : 502;
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json({ error: message }, { status: 502 });
   }
 }
