@@ -56,4 +56,36 @@ describe('police API helpers', () => {
     const { fetchCrimes } = await import('@/lib/police');
     await expect(fetchCrimes(51.6, -0.13, '2026-02')).rejects.toThrow(/too many crimes/i);
   });
+
+  it('preserves the response status on the thrown error, not just the message', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ error: 'too many crimes in this area for one request - try a smaller date range' }),
+    });
+    const { fetchCrimes, ApiError } = await import('@/lib/police');
+
+    await expect(fetchCrimes(51.6, -0.13, '2026-02')).rejects.toMatchObject({
+      status: 503,
+    });
+    // Also directly catchable as the typed error, not just duck-typed.
+    try {
+      await fetchCrimes(51.6, -0.13, '2026-02');
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(ApiError);
+      expect((e as InstanceType<typeof ApiError>).status).toBe(503);
+    }
+  });
+
+  it('preserves a 400 differently from a 5xx', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: 'Invalid lat' }),
+    });
+    const { geocodePostcode } = await import('@/lib/police');
+
+    await expect(geocodePostcode('nonsense')).rejects.toMatchObject({ status: 400 });
+  });
 });
