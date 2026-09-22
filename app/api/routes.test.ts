@@ -50,4 +50,18 @@ describe('API route handlers', () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual([]);
   });
+
+  it('maps a 503 from the crime upstream through to the route response', async () => {
+    // Exercises the real route.ts catch block, not just upstream.ts or
+    // police.ts in isolation - this is the only test that actually runs the
+    // `reason instanceof UpstreamError` branch that turns a 503 upstream
+    // response into a 503 route response with the upstream's own message,
+    // rather than the generic 502 fallback.
+    fetchMock.mockResolvedValue({ status: 503, ok: false, json: async () => null });
+    const res = await getCrimes(new Request('http://localhost/api/crimes?lat=51.5&lng=-0.12&date=2026-01'));
+    expect(res.status).toBe(503);
+    await expect(res.json()).resolves.toEqual({
+      error: 'too many crimes in this area for one request - try a smaller date range',
+    });
+  });
 });
