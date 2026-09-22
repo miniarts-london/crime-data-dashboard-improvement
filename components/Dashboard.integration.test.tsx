@@ -34,6 +34,16 @@ vi.mock('@/components/CrimeMap', () => ({
 
 const GEOCODED: Record<string, { lat: number; lng: number; label: string }> = {
   'SW1A 1AA': { lat: 51.501, lng: -0.142, label: 'SW1A 1AA' },
+  // Each test below searches a postcode none of the others touch. lib/police.ts's
+  // geocodeCache/crimesCache are module-scope Maps (Q7/Q12 in the interview doc)
+  // that live for this whole file's run, since Dashboard - and so lib/police - is
+  // only ever imported once normally at the top of the file; there's no per-test
+  // vi.resetModules() + dynamic import here the way lib/police.test.ts uses to get
+  // a fresh cache each time (Q18). Giving every test its own postcode keeps their
+  // cache keys from colliding, without needing that heavier reset machinery on a
+  // component test.
+  'EC1A 1BB': { lat: 51.518, lng: -0.098, label: 'EC1A 1BB' },
+  'W1A 0AX': { lat: 51.517, lng: -0.141, label: 'W1A 0AX' },
 };
 
 function rawCrime(overrides: Partial<RawCrime> = {}): RawCrime {
@@ -114,11 +124,11 @@ describe('Dashboard (integration: real lib/police, mocked network boundary)', ()
   });
 
   it('does not hit the network twice for a postcode/month already fetched (lib/police cache)', async () => {
-    const fetchMock = installFetchMock({ 'SW1A 1AA': [rawCrime()] });
+    const fetchMock = installFetchMock({ 'EC1A 1BB': [rawCrime()] });
     const user = userEvent.setup();
     renderWithProviders(<Dashboard initialParams={emptyParams} />);
 
-    await searchPostcode(user, 'SW1A 1AA');
+    await searchPostcode(user, 'EC1A 1BB');
     expect(await screen.findByRole('heading', { level: 3, name: '1' })).toBeInTheDocument();
     const callsAfterFirstSearch = fetchMock.mock.calls.length;
     expect(callsAfterFirstSearch).toBe(2); // one geocode call, one crimes call
@@ -137,7 +147,7 @@ describe('Dashboard (integration: real lib/police, mocked network boundary)', ()
 
   it('lets a keyboard-only user activate a table cell to filter (regression check for the CrimeTable a11y fix)', async () => {
     installFetchMock({
-      'SW1A 1AA': [
+      'W1A 0AX': [
         rawCrime(),
         rawCrime({
           id: 2,
@@ -149,7 +159,7 @@ describe('Dashboard (integration: real lib/police, mocked network boundary)', ()
     const user = userEvent.setup();
     renderWithProviders(<Dashboard initialParams={emptyParams} />);
 
-    await searchPostcode(user, 'SW1A 1AA');
+    await searchPostcode(user, 'W1A 0AX');
     expect(await screen.findByRole('heading', { level: 3, name: '2' })).toBeInTheDocument();
 
     // "Under investigation" only appears as the outcome cell for the first
