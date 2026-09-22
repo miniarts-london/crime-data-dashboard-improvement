@@ -48,6 +48,18 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
   const [openSnackBar, setOpenSnackBar] = useState(false);
   
   const searchGen = useRef(0);
+  // Tracks the AbortController for whichever search is currently allowed
+  // to touch the network. A new search aborts whatever the previous one
+  // still had in flight before doing anything else, so an abandoned
+  // search's requests (results already discarded via stillCurrent(),
+  // below) also stop occupying createLimiter's 4 concurrency slots
+  // instead of running to completion for nothing. This is the only
+  // staleness check the fan-out tasks below need: a queued-but-not-yet-
+  // started task gets an already-aborted signal and fetch rejects
+  // immediately with no network call at all, and an in-flight task gets
+  // cancelled outright - so there's no separate stillCurrent() guard
+  // needed at the top of each task alongside this.
+  const abortRef = useRef<AbortController | null>(null);
   const didAutoSearch = useRef(false);
 
   const [quickFilters, setQuickFilters] = useState<QuickFilters>({ postcode: null, category: null, outcome: null });
@@ -100,6 +112,9 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
 
   const runSearch = useCallback(async (postcodes: string[], searchFrom: string, searchTo: string) => {
     const gen = ++searchGen.current;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setError('');
     const months = monthsBetween(searchFrom, searchTo);
     const totalCombos = postcodes.length * months.length;
@@ -126,7 +141,7 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
         postcodes.map((pc) =>
           limiter(async () => {
             try {
-              const loc = await geocodePostcode(pc);
+              const loc = await geocodePostcode(pc, controller.signal);
               geocoded.push({ postcode: loc.label || pc, lat: loc.lat, lng: loc.lng });
             } catch (e) {
               issues.push(`${pc}: ${(e as Error).message}`);
@@ -157,7 +172,7 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
           months.map((month) =>
             limiter(async () => {
               try {
-                const raw = await fetchCrimes(g.lat, g.lng, month);
+                const raw = await fetchCrimes(g.lat, g.lng, month, controller.signal);
                 allRows.push(...normalize(raw, g.postcode));
               } catch (e) {
                 issues.push(`${g.postcode} (${month}): ${(e as Error).message}`);
@@ -197,6 +212,16 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Cancel whatever's in flight if Dashboard itself unmounts mid-search -
+  // otherwise those requests run to completion for a component that's no
+  // longer there to receive their (React 18+ silently-ignored) setState
+  // calls, still occupying limiter slots the whole time.
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
   }, []);
 
   const handleSearchSubmit = useCallback(

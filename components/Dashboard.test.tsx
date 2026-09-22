@@ -71,7 +71,10 @@ describe('Dashboard', () => {
     expect(screen.getByText('Crime map mock')).toBeInTheDocument();
     expect(screen.getByRole('list')).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'SW1A 1AA' }).length).toBeGreaterThan(0);
-    expect(geocodePostcodeMock).toHaveBeenCalledWith('SW1A 1AA');
+    // Dashboard now also passes its per-search AbortController's signal
+    // as a second argument, so match it positionally rather than assert
+    // an exact single-arg call.
+    expect(geocodePostcodeMock).toHaveBeenCalledWith('SW1A 1AA', expect.anything());
     expect(fetchCrimesMock).toHaveBeenCalled();
   });
 
@@ -81,7 +84,10 @@ describe('Dashboard', () => {
     );
 
     expect(await screen.findByRole('heading', { level: 3, name: '1' })).toBeInTheDocument();
-    expect(geocodePostcodeMock).toHaveBeenCalledWith('SW1A 1AA');
+    // Dashboard now also passes its per-search AbortController's signal
+    // as a second argument, so match it positionally rather than assert
+    // an exact single-arg call.
+    expect(geocodePostcodeMock).toHaveBeenCalledWith('SW1A 1AA', expect.anything());
   });
 
   it('resets postcodes, searched history, results, and the URL', async () => {

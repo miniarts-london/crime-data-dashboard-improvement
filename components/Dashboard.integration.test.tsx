@@ -119,7 +119,10 @@ describe('Dashboard (integration: real lib/police, mocked network boundary)', ()
     // These prove lib/police itself built the right request - a
     // fully-mocked `@/lib/police` test can't see this, since the real
     // function bodies never run there.
-    expect(fetchMock).toHaveBeenCalledWith('/api/postcode/SW1A%201AA');
+    // lib/police.ts now always passes a second { signal } argument to
+    // fetch (see withTimeout() in lib/police.ts), so match the URL
+    // positionally rather than the exact full call.
+    expect(fetchMock).toHaveBeenCalledWith('/api/postcode/SW1A%201AA', expect.anything());
     expect(fetchMock.mock.calls.some(([u]) => String(u).startsWith('/api/crimes?'))).toBe(true);
   });
 

@@ -25,7 +25,11 @@ describe('police API helpers', () => {
       lng: -0.142,
       label: 'SW1A 1AA',
     });
-    expect(fetchMock).toHaveBeenCalledWith('/api/postcode/SW1A%201AA');
+    // fetch is now always called with a second { signal } argument
+    // (geocodePostcode/fetchCrimes always combine an optional caller
+    // signal with a fixed timeout via withTimeout()), so this checks the
+    // URL positionally rather than the exact full call.
+    expect(fetchMock).toHaveBeenCalledWith('/api/postcode/SW1A%201AA', expect.anything());
   });
 
   it('reuses a cached geocode result', async () => {
