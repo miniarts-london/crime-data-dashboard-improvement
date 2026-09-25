@@ -17,6 +17,7 @@ import CrimeTable from "./CrimeTable";
 import PostcodeHistory from "./PostcodeHistory";
 import { usePostcodeHistory } from "@/lib/usePostcodeHistory";
 import { useCrimes } from "@/lib/useCrimes";
+import CrimeMapErrorBoundary from "./CrimeMapErrorBoundary";
 
 const CrimeMap = dynamic(() => import("./CrimeMap"), {
   ssr: false,
@@ -249,10 +250,12 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
                 </Box>
                 <Box sx={{ height: 360, mt: 1, '& .leaflet-container': { height: '100%', width: '100%' } }}>
                   {searchPoints.length > 0 ? (
-                    <CrimeMap
-                      crimes={filteredCrimes}
-                      searchPoints={searchPoints}
-                    />
+                    <CrimeMapErrorBoundary>
+                      <CrimeMap
+                        crimes={filteredCrimes}
+                        searchPoints={searchPoints}
+                      />
+                    </CrimeMapErrorBoundary>
                   ) : (
                     <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Typography variant="body2" color="text.secondary">
