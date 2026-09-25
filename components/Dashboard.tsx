@@ -4,21 +4,19 @@ import { Box, Typography, Grid, AppBar, Paper, Toolbar, LinearProgress, Chip, St
 import SearchBar from "./SearchBar";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { CrimeRecord, InitialParams, QuickFilters, SearchPoint } from "@/types/dashboard";
+import { InitialParams, QuickFilters } from "@/types/dashboard";
 import { parsePostcodesInput } from "@/lib/postcodes";
-import { currentMonth, monthsBetween } from "@/lib/dateRange";
+import { currentMonth } from "@/lib/dateRange";
 import Header from "./Header";
 import { useColorMode } from "./ContextRoot/Providers";
-import { MAX_REQUESTS } from "@/config/config";
-import { fetchCrimes, geocodePostcode } from '@/lib/police';
-import { clearQueryString, normalize, updateQueryString } from "@/components/Helper";
-import { createLimiter } from "@/lib/concurrency";
+import { clearQueryString, updateQueryString } from "@/components/Helper";
 import { categoryLabel } from "@/lib/theme";
 import SnackBar from "./snackBar";
 import CrimeOverview from "./CrimeOverview";
 import CrimeTable from "./CrimeTable";
 import PostcodeHistory from "./PostcodeHistory";
 import { usePostcodeHistory } from "@/lib/usePostcodeHistory";
+import { useCrimes } from "@/lib/useCrimes";
 
 const CrimeMap = dynamic(() => import("./CrimeMap"), {
   ssr: false,
@@ -29,8 +27,6 @@ const CrimeMap = dynamic(() => import("./CrimeMap"), {
   ),
 });
 
-const limiter = createLimiter(4);
-
 export default function Dashboard({ initialParams }: { initialParams: InitialParams }) {
   const { mode, toggleColorMode } = useColorMode();
   const history = usePostcodeHistory();
@@ -39,30 +35,16 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
   const [from, setFrom] = useState(initialParams.from);
   const [to, setTo] = useState(initialParams.to);
   const [notice, setNotice] = useState('');
-  const [crimes, setCrimes] = useState<CrimeRecord[]>([]);
-  const [searchPoints, setSearchPoints] = useState<SearchPoint[]>([]);
-
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const [error, setError] = useState('');
-  const [openSnackBar, setOpenSnackBar] = useState(false);
-  
-  const searchGen = useRef(0);
-  // Tracks the AbortController for whichever search is currently allowed
-  // to touch the network. A new search aborts whatever the previous one
-  // still had in flight before doing anything else, so an abandoned
-  // search's requests (results already discarded via stillCurrent(),
-  // below) also stop occupying createLimiter's 4 concurrency slots
-  // instead of running to completion for nothing. This is the only
-  // staleness check the fan-out tasks below need: a queued-but-not-yet-
-  // started task gets an already-aborted signal and fetch rejects
-  // immediately with no network call at all, and an in-flight task gets
-  // cancelled outright - so there's no separate stillCurrent() guard
-  // needed at the top of each task alongside this.
-  const abortRef = useRef<AbortController | null>(null);
+  const [quickFilters, setQuickFilters] = useState<QuickFilters>({ postcode: null, category: null, outcome: null });
   const didAutoSearch = useRef(false);
 
-  const [quickFilters, setQuickFilters] = useState<QuickFilters>({ postcode: null, category: null, outcome: null });
+  const handleSearchStart = useCallback((pcs: string[], searchFrom: string, searchTo: string) => {
+    updateQueryString(pcs, searchFrom, searchTo);
+    setQuickFilters({ postcode: null, category: null, outcome: null });
+  }, []);
+
+  const { crimes, searchPoints, loading, progress, error, search: runSearch, reset: resetCrimes, clearError } =
+    useCrimes({ onSearchStart: handleSearchStart, onGeocoded: history.record });
 
   const filteredCrimes = useMemo(
     () =>
@@ -110,99 +92,6 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
       .map((value) => ({ value, label: value }));
   }, [crimes]);
 
-  const runSearch = useCallback(async (postcodes: string[], searchFrom: string, searchTo: string) => {
-    const gen = ++searchGen.current;
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setError('');
-    const months = monthsBetween(searchFrom, searchTo);
-    const totalCombos = postcodes.length * months.length;
-    if (totalCombos > MAX_REQUESTS) {
-      setError(
-        `That's ${totalCombos} postcode/month combinations - please narrow your postcodes or date range (max ${MAX_REQUESTS}).`
-      );
-      setOpenSnackBar(true);
-      return;
-    }
-
-    updateQueryString(postcodes, searchFrom, searchTo);
-    setLoading(true);
-    setQuickFilters({ postcode: null, category: null, outcome: null });
-    setProgress({ done: 0, total: postcodes.length + totalCombos });
-
-    const stillCurrent = () => gen === searchGen.current;
-
-    try {
-      const geocoded: SearchPoint[] = [];
-      const issues: string[] = [];
-
-      await Promise.all(
-        postcodes.map((pc) =>
-          limiter(async () => {
-            try {
-              const loc = await geocodePostcode(pc, controller.signal);
-              geocoded.push({ postcode: loc.label || pc, lat: loc.lat, lng: loc.lng });
-            } catch (e) {
-              issues.push(`${pc}: ${(e as Error).message}`);
-            } finally {
-              if (stillCurrent()) setProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
-            }
-          })
-        )
-      );
-
-      if (!stillCurrent()) return;
-
-      setSearchPoints(geocoded);
-      if (geocoded.length > 0) {
-        history.record(geocoded.map((g) => g.postcode));
-      }
-
-      if (geocoded.length === 0) {
-        setCrimes([]);
-        setError(`Couldn't find any of the entered postcodes. ${issues.join('; ')}`);
-        setOpenSnackBar(true);
-        return;
-      }
-
-      const allRows: CrimeRecord[] = [];
-      await Promise.all(
-        geocoded.flatMap((g) =>
-          months.map((month) =>
-            limiter(async () => {
-              try {
-                const raw = await fetchCrimes(g.lat, g.lng, month, controller.signal);
-                allRows.push(...normalize(raw, g.postcode));
-              } catch (e) {
-                issues.push(`${g.postcode} (${month}): ${(e as Error).message}`);
-              } finally {
-                if (stillCurrent()) setProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
-              }
-            })
-          )
-        )
-      );
-
-      if (!stillCurrent()) return;
-
-      setCrimes(allRows);
-      if (issues.length) {
-        setError(`Some requests had issues: ${issues.join('; ')}`);
-        setOpenSnackBar(true);
-      } else if (allRows.length === 0) {
-        setError('No crimes found for that search.');
-        setOpenSnackBar(true);
-      }
-    } finally {
-      if (stillCurrent()) {
-        setLoading(false);
-        setProgress(null);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [history.record]);
-
   useEffect(() => {
     if (didAutoSearch.current) return;
     didAutoSearch.current = true;
@@ -212,16 +101,6 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Cancel whatever's in flight if Dashboard itself unmounts mid-search -
-  // otherwise those requests run to completion for a component that's no
-  // longer there to receive their (React 18+ silently-ignored) setState
-  // calls, still occupying limiter slots the whole time.
-  useEffect(() => {
-    return () => {
-      abortRef.current?.abort();
-    };
   }, []);
 
   const handleSearchSubmit = useCallback(
@@ -245,27 +124,17 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
   );
 
   const handleReset = useCallback(() => {
-    searchGen.current += 1;
+    resetCrimes();
     const month = currentMonth();
     setPostcodes([]);
     setFrom(month);
     setTo(month);
     setNotice('');
-    setSearchPoints([]);
-    setCrimes([]);
     setQuickFilters({ postcode: null, category: null, outcome: null });
-    setError('');
-    setOpenSnackBar(false);
-    setLoading(false);
-    setProgress(null);
     history.clear();
     clearQueryString();
-  }, [history.clear]);
+  }, [resetCrimes, history.clear]);
 
-  const handleCloseSnackbar = () => {
-    setOpenSnackBar(false)
-    setError('')
-  }
 
   const activeFilterChips = (Object.entries(quickFilters) as [keyof QuickFilters, string | null][]).filter(
     ([, v]) => v
@@ -417,9 +286,9 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
       </Box>
       {error && (
         <SnackBar 
-          openSnackbar={openSnackBar} 
-          message={error} 
-          handleCloseSnackbar={handleCloseSnackbar}
+          openSnackbar={Boolean(error)}
+          message={error}
+          handleCloseSnackbar={clearError}
         />
       )}
     </>
