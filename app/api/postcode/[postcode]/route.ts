@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { normalizePostcode, POSTCODE_REGEX } from '@/lib/postcodes';
+import { PostcodeParamSchema } from '@/lib/schemas';
 import { geocodePostcodeUpstream } from '@/lib/server/upstream';
 
 export async function GET(
@@ -7,10 +7,11 @@ export async function GET(
   { params }: { params: Promise<{ postcode: string }> }
 ) {
   const { postcode: raw } = await params;
-  const postcode = normalizePostcode(decodeURIComponent(raw));
-  if (!POSTCODE_REGEX.test(postcode)) {
+  const parsed = PostcodeParamSchema.safeParse(raw);
+  if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid postcode' }, { status: 400 });
   }
+  const postcode = parsed.data;
 
   try {
     const result = await geocodePostcodeUpstream(postcode);

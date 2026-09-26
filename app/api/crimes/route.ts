@@ -1,23 +1,16 @@
 import { NextResponse } from 'next/server';
 import { fetchCrimesUpstream, UpstreamError } from '@/lib/server/upstream';
-
-const MONTH_REGEX = /^\d{4}-\d{2}$/;
+import { CrimesQuerySchema } from '@/lib/schemas';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const lat = Number(searchParams.get('lat'));
-  const lng = Number(searchParams.get('lng'));
-  const date = searchParams.get('date') ?? '';
-
-  if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
-    return NextResponse.json({ error: 'Invalid lat' }, { status: 400 });
+  const parsed = CrimesQuerySchema.safeParse(Object.fromEntries(searchParams));
+  if (!parsed.success) {
+    // Name the first bad field (lat / lng / date), matching the old messages.
+    const field = parsed.error.issues[0]?.path[0];
+    return NextResponse.json({ error: `Invalid ${String(field ?? 'query')}` }, { status: 400 });
   }
-  if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
-    return NextResponse.json({ error: 'Invalid lng' }, { status: 400 });
-  }
-  if (date && !MONTH_REGEX.test(date)) {
-    return NextResponse.json({ error: 'Invalid date' }, { status: 400 });
-  }
+  const { lat, lng, date = '' } = parsed.data;
 
   try {
     const crimes = await fetchCrimesUpstream(lat, lng, date);

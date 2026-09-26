@@ -1,29 +1,23 @@
+import type { z } from 'zod';
+import type {
+  GeocodeResultSchema,
+  RawCrimeLocationSchema,
+  RawCrimeOutcomeSchema,
+  RawCrimeSchema,
+} from '@/lib/schemas';
+
 export interface InitialParams {
   postcodes: string[];
   from: string;
   to: string;
 }
 
-export interface RawCrimeLocation {
-  latitude: string;
-  longitude: string;
-  street?: { id: number; name: string };
-}
-
-export interface RawCrimeOutcome {
-  category: string;
-  date: string;
-}
-
-// Shape returned by https://data.police.uk/api/crimes-street/all-crime
-export interface RawCrime {
-  category: string;
-  id?: number;
-  persistent_id?: string;
-  month: string;
-  location: RawCrimeLocation | null;
-  outcome_status?: RawCrimeOutcome | null;
-}
+// Shapes of external data, inferred from the runtime schemas in lib/schemas.ts.
+// RawCrime is the shape returned by https://data.police.uk/api/crimes-street/all-crime
+export type RawCrimeLocation = z.infer<typeof RawCrimeLocationSchema>;
+export type RawCrimeOutcome = z.infer<typeof RawCrimeOutcomeSchema>;
+export type RawCrime = z.infer<typeof RawCrimeSchema>;
+export type GeocodeResult = z.infer<typeof GeocodeResultSchema>;
 
 // A normalized crime row, tagged with the postcode whose search found it.
 export interface CrimeRecord {
@@ -43,12 +37,6 @@ export interface SearchPoint {
   postcode: string;
   lat: number;
   lng: number;
-}
-
-export interface GeocodeResult {
-  lat: number;
-  lng: number;
-  label: string;
 }
 
 export interface QuickFilters {

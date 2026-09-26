@@ -64,4 +64,25 @@ describe('API route handlers', () => {
       error: 'too many crimes in this area for one request - try a smaller date range',
     });
   });
+
+  it('rejects a crime request with no latitude at all', async () => {
+    const res = await getCrimes(new Request('http://localhost/api/crimes?lng=0&date=2026-01'));
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({ error: 'Invalid lat' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects a crime request with a badly formatted date', async () => {
+    const res = await getCrimes(new Request('http://localhost/api/crimes?lat=51.5&lng=-0.12&date=Jan-2026'));
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({ error: 'Invalid date' });
+  });
+
+  it('rejects a malformed percent-encoded postcode with 400, not 500', async () => {
+    const res = await getPostcode(new Request('http://localhost/api/postcode/%E0%A4%A'), {
+      params: Promise.resolve({ postcode: '%E0%A4%A' }),
+    });
+    expect(res.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
