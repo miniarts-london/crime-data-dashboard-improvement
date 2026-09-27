@@ -40,12 +40,15 @@ export function clearQueryString() {
 }
 
 export function normalize(raw: RawCrime[], postcode: string): CrimeRecord[] {
-  return raw.map((c) => {
+  return raw.map((c, i) => {
     const loc = c.location;
     const hasLocation = Boolean(loc && loc.latitude && loc.longitude);
     return {
-      id: `${postcode}-${c.id ?? c.persistent_id}`,
-      postcode,
+      // The API's own id, not prefixed with the postcode, so dedupeCrimes can
+      // spot the same crime coming back from two overlapping searches. A crime
+      // with neither id gets a key of its own and is never merged.
+      id: c.id != null ? String(c.id) : c.persistent_id || `${postcode}-${c.month}-${i}`,
+      postcodes: [postcode],
       hasLocation,
       lat: hasLocation && loc ? parseFloat(loc.latitude) : null,
       lng: hasLocation && loc ? parseFloat(loc.longitude) : null,
@@ -56,4 +59,23 @@ export function normalize(raw: RawCrime[], postcode: string): CrimeRecord[] {
       outcome: c.outcome_status?.category || 'No outcome recorded yet',
     };
   });
+}
+
+// The police API returns every crime within 1 mile of each searched point, so
+// nearby postcodes return some of the same crimes. Merge them into one row per
+// crime (keeping first-seen order) that lists every postcode it was found near,
+// so totals count each crime once and a postcode filter still shows them all.
+export function dedupeCrimes(rows: CrimeRecord[]): CrimeRecord[] {
+  const byId = new Map<string, CrimeRecord>();
+  for (const row of rows) {
+    const existing = byId.get(row.id);
+    if (!existing) {
+      byId.set(row.id, { ...row, postcodes: [...row.postcodes] });
+      continue;
+    }
+    for (const pc of row.postcodes) {
+      if (!existing.postcodes.includes(pc)) existing.postcodes.push(pc);
+    }
+  }
+  return [...byId.values()];
 }

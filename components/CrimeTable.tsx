@@ -20,14 +20,18 @@ function CrimeTable({ crimes, onQuickFilter, activeFilters }: CrimeTableProps) {
   const columns = useMemo<MRT_ColumnDef<CrimeRecord>[]>(
     () => [
       {
-        accessorKey: 'postcode',
+        // A crime can be near more than one searched postcode. Sorting and
+        // the column filter use the joined string; the cell shows one filter
+        // button per postcode.
+        id: 'postcode',
+        accessorFn: (row) => row.postcodes.join(', '),
         header: 'Postcode',
         size:100,
-        Cell: ({ cell }) => {
-          const value = cell.getValue<string>();
+        Cell: ({ row }) => row.original.postcodes.map((value, i) => {
           const active = activeFilters.postcode === value;
           return (
             <Box
+              key={value}
               component="button"
               onClick={() => onQuickFilter('postcode', value)}
               title="Click to filter by this postcode"
@@ -44,10 +48,10 @@ function CrimeTable({ crimes, onQuickFilter, activeFilters }: CrimeTableProps) {
               }}
               aria-pressed={active}
             >
-              {value}
+              {value}{i < row.original.postcodes.length - 1 ? ', ' : ''}
             </Box>
           );
-        },
+        }),
       },
       {
         accessorKey: 'month',

@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -80,7 +81,9 @@ describe('Dashboard', () => {
 
   it('auto-searches when the page is opened with query params', async () => {
     renderWithProviders(
-      <Dashboard initialParams={{ postcodes: ['SW1A 1AA'], from: '2026-06', to: '2026-06' }} />
+      <StrictMode>
+        <Dashboard initialParams={{ postcodes: ['SW1A 1AA'], from: '2026-06', to: '2026-06' }} />
+      </StrictMode>
     );
 
     expect(await screen.findByRole('heading', { level: 3, name: '1' })).toBeInTheDocument();

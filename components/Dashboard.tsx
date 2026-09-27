@@ -2,7 +2,7 @@
 
 import { Box, Typography, Grid, AppBar, Paper, Toolbar, LinearProgress, Chip, Stack } from "@mui/material";
 import SearchBar from "./SearchBar";
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { InitialParams, QuickFilters } from "@/types/dashboard";
 import { parsePostcodesInput } from "@/lib/postcodes";
@@ -37,7 +37,6 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
   const [to, setTo] = useState(initialParams.to);
   const [notice, setNotice] = useState('');
   const [quickFilters, setQuickFilters] = useState<QuickFilters>({ postcode: null, category: null, outcome: null });
-  const didAutoSearch = useRef(false);
 
   const handleSearchStart = useCallback((pcs: string[], searchFrom: string, searchTo: string) => {
     updateQueryString(pcs, searchFrom, searchTo);
@@ -51,7 +50,7 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
     () =>
       crimes.filter(
         (c) =>
-          (!quickFilters.postcode || c.postcode === quickFilters.postcode) &&
+          (!quickFilters.postcode || c.postcodes.includes(quickFilters.postcode)) &&
           (!quickFilters.category || c.category === quickFilters.category) &&
           (!quickFilters.outcome || c.outcome === quickFilters.outcome)
       ),
@@ -93,14 +92,19 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
       .map((value) => ({ value, label: value }));
   }, [crimes]);
 
+  // Run once on mount. The cancelled flag matters in dev: React mounts, cleans
+  // up, and mounts again, and the cleanup aborts the search the first pass
+  // started. Without this, that aborted search is the only one and a shared
+  // link opens an empty dashboard.
   useEffect(() => {
-    if (didAutoSearch.current) return;
-    didAutoSearch.current = true;
-    if (initialParams.postcodes.length > 0) {
-      queueMicrotask(() => {
-        runSearch(initialParams.postcodes, initialParams.from, initialParams.to);
-      });
-    }
+    if (initialParams.postcodes.length === 0) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) runSearch(initialParams.postcodes, initialParams.from, initialParams.to);
+    });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

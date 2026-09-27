@@ -27,9 +27,24 @@ describe('useCrimes', () => {
     fetchCrimesMock.mockResolvedValue([sampleCrime]);
   });
 
+  it('counts a crime found by two nearby postcodes once, tagged with both', async () => {
+    geocodePostcodeMock.mockImplementation(async (pc) => ({ lat: 51.501, lng: -0.142, label: pc }));
+    const { result } = renderHook(() => useCrimes());
+
+    await act(() => result.current.search(['SW1A 1AA', 'SW1A 2AA'], '2026-06', '2026-06'));
+
+    expect(fetchCrimesMock).toHaveBeenCalledTimes(2);
+    expect(result.current.crimes).toHaveLength(1);
+    expect(result.current.crimes[0].postcodes).toEqual(expect.arrayContaining(['SW1A 1AA', 'SW1A 2AA']));
+  });
+
   it('geocodes, fetches each month and fires callbacks', async () => {
     const onSearchStart = vi.fn();
     const onGeocoded = vi.fn();
+    // Each month is a different crime with its own id, as the real API returns.
+    fetchCrimesMock.mockImplementation(async (_lat, _lng, month) => [
+      { ...sampleCrime, id: month === '2026-05' ? 1 : 2, month: month ?? '2026-06' },
+    ]);
     const { result } = renderHook(() => useCrimes({ onSearchStart, onGeocoded }));
 
     await act(() => result.current.search(['SW1A 1AA'], '2026-05', '2026-06'));

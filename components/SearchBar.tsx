@@ -129,10 +129,8 @@ function SearchBar({
       component="form"
       autoComplete="off"
       onSubmit={(event) => {
-        if (!canSearch) {
-          event.preventDefault();
-          return;
-        }
+        event.preventDefault();
+        if (!canSearch) return;
         onSubmit(event);
       }}
       sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center', width: '100%' }}

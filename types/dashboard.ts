@@ -19,10 +19,12 @@ export type RawCrimeOutcome = z.infer<typeof RawCrimeOutcomeSchema>;
 export type RawCrime = z.infer<typeof RawCrimeSchema>;
 export type GeocodeResult = z.infer<typeof GeocodeResultSchema>;
 
-// A normalized crime row, tagged with the postcode whose search found it.
+// A normalized crime row. `id` is the police API's own crime id, so the same
+// crime found by two nearby postcodes (their 1-mile search radii overlap) is
+// one row, tagged with every searched postcode it is near.
 export interface CrimeRecord {
   id: string;
-  postcode: string;
+  postcodes: string[];
   hasLocation: boolean;
   lat: number | null;
   lng: number | null;

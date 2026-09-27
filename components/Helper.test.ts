@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clearQueryString, normalize, parseSearchParams, updateQueryString } from '@/components/Helper';
+import { clearQueryString, dedupeCrimes, normalize, parseSearchParams, updateQueryString } from '@/components/Helper';
 import type { RawCrime } from '@/types/dashboard';
 
 describe('parseSearchParams', () => {
@@ -53,8 +53,8 @@ describe('normalize', () => {
     };
 
     expect(normalize([raw], 'SW1A 1AA')[0]).toMatchObject({
-      id: 'SW1A 1AA-9',
-      postcode: 'SW1A 1AA',
+      id: '9',
+      postcodes: ['SW1A 1AA'],
       hasLocation: true,
       lat: 51.501,
       lng: -0.142,
@@ -75,7 +75,7 @@ describe('normalize', () => {
     };
 
     expect(normalize([raw], 'EC1A 1BB')[0]).toMatchObject({
-      id: 'EC1A 1BB-abc',
+      id: 'abc',
       hasLocation: false,
       lat: null,
       lng: null,
@@ -85,3 +85,42 @@ describe('normalize', () => {
     });
   });
 });
+
+describe('dedupeCrimes', () => {
+  const raw = (id: number, category = 'burglary'): RawCrime => ({
+    category,
+    id,
+    month: '2026-06',
+    location: { latitude: '51.501', longitude: '-0.142' },
+  });
+
+  it('merges a crime found by two overlapping postcode searches into one row', () => {
+    const rows = [
+      ...normalize([raw(1), raw(2)], 'SW1A 1AA'),
+      ...normalize([raw(2), raw(3)], 'SW1A 2AA'),
+    ];
+
+    const crimes = dedupeCrimes(rows);
+
+    expect(crimes.map((c) => c.id)).toEqual(['1', '2', '3']);
+    expect(crimes.find((c) => c.id === '2')?.postcodes).toEqual(['SW1A 1AA', 'SW1A 2AA']);
+    expect(crimes.find((c) => c.id === '1')?.postcodes).toEqual(['SW1A 1AA']);
+  });
+
+  it('does not list the same postcode twice or mutate its input', () => {
+    const rows = normalize([raw(5), raw(5)], 'SW1A 1AA');
+
+    const crimes = dedupeCrimes(rows);
+
+    expect(crimes).toHaveLength(1);
+    expect(crimes[0].postcodes).toEqual(['SW1A 1AA']);
+    expect(rows[0].postcodes).toEqual(['SW1A 1AA']);
+  });
+
+  it('never merges crimes that have no id', () => {
+    const noId: RawCrime = { category: 'other-theft', month: '2026-06', location: null };
+
+    expect(dedupeCrimes(normalize([noId, noId], 'EC1A 1BB'))).toHaveLength(2);
+  });
+});
+

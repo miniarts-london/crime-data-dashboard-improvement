@@ -10,8 +10,8 @@ vi.mock('@/components/ContextRoot/Providers', () => ({
 }));
 
 const crime: CrimeRecord = {
-  id: 'SW1A 1AA-1',
-  postcode: 'SW1A 1AA',
+  id: '1',
+  postcodes: ['SW1A 1AA'],
   hasLocation: true,
   lat: 51.5,
   lng: -0.14,

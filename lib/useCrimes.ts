@@ -6,7 +6,7 @@ import { MAX_REQUESTS } from '@/config/config';
 import { fetchCrimes, geocodePostcode } from '@/lib/police';
 import { createLimiter } from '@/lib/concurrency';
 import { monthsBetween } from '@/lib/dateRange';
-import { normalize } from '@/components/Helper';
+import { dedupeCrimes, normalize } from '@/components/Helper';
 
 const limiter = createLimiter(4);
 
@@ -120,10 +120,11 @@ export function useCrimes({ onSearchStart, onGeocoded }: UseCrimesOptions = {}) 
 
       if (!stillCurrent()) return;
 
-      setCrimes(allRows);
+      const crimes = dedupeCrimes(allRows);
+      setCrimes(crimes);
       if (issues.length) {
         setError(`Some requests had issues: ${issues.join('; ')}`);
-      } else if (allRows.length === 0) {
+      } else if (crimes.length === 0) {
         setError('No crimes found for that search.');
       }
     } finally {
