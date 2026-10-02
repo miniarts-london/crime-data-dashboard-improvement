@@ -106,7 +106,7 @@ describe('Dashboard (integration: real lib/police, mocked network boundary)', ()
     vi.unstubAllGlobals();
   });
 
-  it('goes through the real fetch -> cache -> normalize -> render pipeline', async () => {
+  it('goes through the real fetch -> normalize -> render pipeline', async () => {
     const fetchMock = installFetchMock({ 'SW1A 1AA': [rawCrime()] });
     const user = userEvent.setup();
     renderWithProviders(<Dashboard initialParams={emptyParams} />);
@@ -126,7 +126,7 @@ describe('Dashboard (integration: real lib/police, mocked network boundary)', ()
     expect(fetchMock.mock.calls.some(([u]) => String(u).startsWith('/api/crimes?'))).toBe(true);
   });
 
-  it('does not hit the network twice for a postcode/month already fetched (lib/police cache)', async () => {
+  it('does not hit the network twice for a search already fetched (TanStack Query cache)', async () => {
     const fetchMock = installFetchMock({ 'EC1A 1BB': [rawCrime()] });
     const user = userEvent.setup();
     renderWithProviders(<Dashboard initialParams={emptyParams} />);
@@ -140,10 +140,9 @@ describe('Dashboard (integration: real lib/police, mocked network boundary)', ()
     await user.click(screen.getByRole('button', { name: 'Search' }));
 
     await waitFor(() => {
-      // Dashboard has no "already searched this" guard of its own - it
-      // calls geocodePostcode/fetchCrimes again every time. It's
-      // lib/police's in-memory Maps that should short-circuit before
-      // either call reaches `fetch`.
+      // Dashboard has no "already searched this" guard of its own. The
+      // TanStack Query cache in useCrimes serves the repeated search, so
+      // neither request reaches `fetch` again.
       expect(fetchMock).toHaveBeenCalledTimes(callsAfterFirstSearch);
     });
   });

@@ -6,7 +6,9 @@ import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { getTheme, type ColorMode } from '@/lib/theme';
+import { makeQueryClient } from '@/lib/queryClient';
 
 const STORAGE_KEY = 'crime-dashboard:color-mode';
 
@@ -26,6 +28,9 @@ export function useColorMode() {
 
 export default function Providers({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<ColorMode>('light');
+  // One client per browser session. Created in state, not at module level,
+  // so server renders never share a cache between users.
+  const [queryClient] = useState(makeQueryClient);
 
   // Read the persisted preference (or fall back to the OS setting) once the
   // component mounts in the browser.
@@ -65,12 +70,14 @@ export default function Providers({ children }: { children: ReactNode }) {
 
   return (
     <AppRouterCacheProvider options={{ key: 'mui' }}>
-      <ColorModeContext.Provider value={contextValue}>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <LocalizationProvider dateAdapter={AdapterDayjs}>{children}</LocalizationProvider>
-        </ThemeProvider>
-      </ColorModeContext.Provider>
+      <QueryClientProvider client={queryClient}>
+        <ColorModeContext.Provider value={contextValue}>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <LocalizationProvider dateAdapter={AdapterDayjs}>{children}</LocalizationProvider>
+          </ThemeProvider>
+        </ColorModeContext.Provider>
+      </QueryClientProvider>
     </AppRouterCacheProvider>
   );
 }

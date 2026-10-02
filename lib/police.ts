@@ -15,8 +15,8 @@ export class ApiError extends Error {
   }
 }
 
-const geocodeCache = new Map<string, GeocodeResult>();
-const crimesCache = new Map<string, RawCrime[]>();
+// Caching lives in TanStack Query now (see lib/useCrimes.ts): these
+// functions just make the request, so every call really hits the network.
 
 // Combines a caller-provided signal - Dashboard uses this to cancel a
 // stale search's requests the moment a new one starts - with a fixed
@@ -35,14 +35,9 @@ async function readError(res: Response): Promise<string> {
 
 export async function geocodePostcode(postcode: string, signal?: AbortSignal): Promise<GeocodeResult> {
   const key = postcode.trim().toUpperCase();
-  const cached = geocodeCache.get(key);
-  if (cached) return cached;
-
   const res = await fetch(`/api/postcode/${encodeURIComponent(key)}`, { signal: withTimeout(signal) });
   if (!res.ok) throw new ApiError(await readError(res), res.status);
-  const result: GeocodeResult = await res.json();
-  geocodeCache.set(key, result);
-  return result;
+  return (await res.json()) as GeocodeResult;
 }
 
 export async function fetchCrimes(
@@ -51,17 +46,11 @@ export async function fetchCrimes(
   date: string,
   signal?: AbortSignal
 ): Promise<RawCrime[]> {
-  const key = `${lat.toFixed(4)},${lng.toFixed(4)},${date}`;
-  const cached = crimesCache.get(key);
-  if (cached) return cached;
-
   const params = new URLSearchParams({ lat: String(lat), lng: String(lng) });
   if (date) params.set('date', date);
 
   const res = await fetch(`/api/crimes?${params}`, { signal: withTimeout(signal) });
   if (!res.ok) throw new ApiError(await readError(res), res.status);
 
-  const data: RawCrime[] = await res.json();
-  crimesCache.set(key, data);
-  return data;
+  return (await res.json()) as RawCrime[];
 }

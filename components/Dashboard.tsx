@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Typography, Grid, AppBar, Paper, Toolbar, LinearProgress, Chip, Stack } from "@mui/material";
+import { Box, Typography, Grid, AppBar, Paper, Toolbar, LinearProgress, Chip, Stack, Skeleton, Button } from "@mui/material";
 import SearchBar from "./SearchBar";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
@@ -28,6 +28,19 @@ const CrimeMap = dynamic(() => import("./CrimeMap"), {
   ),
 });
 
+// Hidden on screen but still read by screen readers (same as MUI's visuallyHidden).
+const srOnly = {
+  border: 0,
+  clip: 'rect(0 0 0 0)',
+  height: '1px',
+  margin: '-1px',
+  overflow: 'hidden',
+  padding: 0,
+  position: 'absolute',
+  whiteSpace: 'nowrap',
+  width: '1px',
+} as const;
+
 export default function Dashboard({ initialParams }: { initialParams: InitialParams }) {
   const { mode, toggleColorMode } = useColorMode();
   const history = usePostcodeHistory();
@@ -43,8 +56,28 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
     setQuickFilters({ postcode: null, category: null, outcome: null });
   }, []);
 
-  const { crimes, searchPoints, loading, progress, error, search: runSearch, reset: resetCrimes, clearError } =
-    useCrimes({ onSearchStart: handleSearchStart, onGeocoded: history.record });
+  const {
+    status,
+    crimes,
+    searchPoints,
+    loading,
+    progress,
+    error,
+    search: runSearch,
+    retry,
+    canRetry,
+    reset: resetCrimes,
+    clearError,
+  } = useCrimes({ onSearchStart: handleSearchStart, onGeocoded: history.record });
+
+  // Announced to screen readers when the search state changes. Errors aren't
+  // repeated here: the snackbar's Alert has role="alert" and announces itself.
+  const statusMessage =
+    status === 'loading' || status === 'refreshing'
+      ? 'Searching for crimes…'
+      : status === 'success'
+        ? `${crimes.length.toLocaleString()} crime${crimes.length === 1 ? '' : 's'} found`
+        : '';
 
   const filteredCrimes = useMemo(
     () =>
@@ -194,8 +227,9 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
             />
           </Toolbar>
           {loading && progress && (
-            <LinearProgress 
-              variant="determinate" 
+            <LinearProgress
+              variant="determinate"
+              aria-label="Search progress"
               value={(progress.done / progress.total) * 100} />
           )}
           {activeFilterChips.length > 0 && (
@@ -214,6 +248,15 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
             </Stack>
           )}
         </AppBar>
+        <Box role="status" aria-live="polite" sx={srOnly}>
+          {statusMessage}
+        </Box>
+        {/* While a new search runs, the previous results stay visible but
+            faded, and aria-busy tells screen readers they're being replaced. */}
+        <Box
+          aria-busy={loading}
+          sx={{ opacity: status === 'refreshing' ? 0.5 : 1, transition: 'opacity 150ms' }}
+        >
         <Grid container sx={{p:2, pb:0}}>
           <Grid size={{xs:12, sm:12, md:3}} sx={{p:1}}>
             <PostcodeHistory
@@ -253,7 +296,9 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
                   </Typography>
                 </Box>
                 <Box sx={{ height: 360, mt: 1, '& .leaflet-container': { height: '100%', width: '100%' } }}>
-                  {searchPoints.length > 0 ? (
+                  {status === 'loading' ? (
+                    <Skeleton variant="rectangular" height="100%" />
+                  ) : searchPoints.length > 0 ? (
                     <CrimeMapErrorBoundary>
                       <CrimeMap
                         crimes={filteredCrimes}
@@ -282,7 +327,8 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
                   breakdown above — to filter the results
                 </Typography>
                 <CrimeTable
-                  crimes={filteredCrimes} 
+                  crimes={filteredCrimes}
+                  loading={status === 'loading'}
                   onQuickFilter={handleQuickFilter} 
                   activeFilters={quickFilters} 
                 />
@@ -290,12 +336,20 @@ export default function Dashboard({ initialParams }: { initialParams: InitialPar
             </Paper>
           </Grid>
         </Grid>
+        </Box>
       </Box>
       {error && (
         <SnackBar 
           openSnackbar={Boolean(error)}
           message={error}
           handleCloseSnackbar={clearError}
+          action={
+            canRetry ? (
+              <Button color="inherit" size="small" onClick={retry}>
+                Retry
+              </Button>
+            ) : undefined
+          }
         />
       )}
     </>

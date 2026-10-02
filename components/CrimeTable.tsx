@@ -12,9 +12,11 @@ interface CrimeTableProps {
   crimes: CrimeRecord[];
   onQuickFilter: (field: keyof QuickFilters, value: string) => void;
   activeFilters: QuickFilters;
+  // First search with nothing to show yet: MRT renders skeleton rows.
+  loading?: boolean;
 }
 
-function CrimeTable({ crimes, onQuickFilter, activeFilters }: CrimeTableProps) {
+function CrimeTable({ crimes, onQuickFilter, activeFilters, loading = false }: CrimeTableProps) {
   const { mode } = useColorMode();
 
   const columns = useMemo<MRT_ColumnDef<CrimeRecord>[]>(
@@ -130,6 +132,7 @@ function CrimeTable({ crimes, onQuickFilter, activeFilters }: CrimeTableProps) {
       pagination: { pageSize: 15, pageIndex: 0 },
     },
     muiTablePaperProps: { sx: { boxShadow: 'none', height: '100%' } },
+    state: { isLoading: loading },
   });
 
   return (

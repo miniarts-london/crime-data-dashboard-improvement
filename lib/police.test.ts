@@ -32,7 +32,7 @@ describe('police API helpers', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/postcode/SW1A%201AA', expect.anything());
   });
 
-  it('reuses a cached geocode result', async () => {
+  it('does not cache: caching is handled by TanStack Query', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({ lat: 51.52, lng: -0.14, label: 'W1A 1AA' }),
@@ -41,7 +41,7 @@ describe('police API helpers', () => {
     const { geocodePostcode } = await import('@/lib/police');
     await geocodePostcode('W1A 1AA');
     await geocodePostcode('W1A 1AA');
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('treats an empty crime payload as no crimes for that month', async () => {

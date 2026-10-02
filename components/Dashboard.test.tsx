@@ -193,4 +193,27 @@ describe('Dashboard', () => {
     expect(await screen.findByRole('heading', { level: 3, name: '1' })).toBeInTheDocument();
     expect(screen.getByText(/filtered by/i)).toBeInTheDocument();
   });
+
+  it('announces the result count when a search succeeds', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Dashboard initialParams={emptyParams} />);
+
+    await searchPostcode(user);
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('1 crime found'));
+  });
+
+  it('offers Retry when a search fails, and retrying shows the results', async () => {
+    const user = userEvent.setup();
+    geocodePostcodeMock.mockRejectedValueOnce(new Error('Postcode not found'));
+    renderWithProviders(<Dashboard initialParams={emptyParams} />);
+
+    await searchPostcode(user);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Couldn't find any of the entered postcodes/);
+
+    await user.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(await screen.findByRole('heading', { level: 3, name: '1' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument());
+  });
 });
