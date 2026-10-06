@@ -2,6 +2,9 @@
   "name": "crime-data-dashboard",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -32,7 +35,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.2",
-    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
     "@types/leaflet": "^1.9.22",
@@ -42,11 +45,11 @@
     "@vitejs/plugin-react": "^6.1.1",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
-    "jsdom": "^30.0.1",
+    "jsdom": "^27.4.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite": "^8.3.0",
-    "vitest": "^5.0.0"
+    "vitest": "^4.1.11"
   },
   "allowScripts": {
     "unrs-resolver@1.12.2": true

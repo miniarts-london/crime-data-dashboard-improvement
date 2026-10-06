@@ -9,6 +9,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: './test/setup.ts',
+    clearMocks: true,
     restoreMocks: true,
   },
 });
