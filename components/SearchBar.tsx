@@ -22,6 +22,27 @@ interface SearchBarProps {
   notice?: string;
 }
 
+const FUTURE_MONTH_ERROR = "Can't be a future month";
+const BEFORE_FROM_ERROR = 'Must be on or after From';
+
+function toMonthDate(month: string): Dayjs | null {
+  return month ? dayjs(`${month}-01`) : null;
+}
+
+// Local picker value that follows the committed 'YYYY-MM' prop: whenever the
+// prop changes (a commit, Reset, a From that drags To forward), the draft
+// snaps back to it. Adjusted during render rather than in an effect, so the
+// picker never renders a stale draft for a frame.
+function useMonthDraft(committed: string) {
+  const [draft, setDraft] = useState<Dayjs | null>(() => toMonthDate(committed));
+  const [syncedTo, setSyncedTo] = useState(committed);
+  if (committed !== syncedTo) {
+    setSyncedTo(committed);
+    setDraft(toMonthDate(committed));
+  }
+  return [draft, setDraft] as const;
+}
+
 function SearchBar({
   postcodes,
   onPostcodesChange,
@@ -41,7 +62,12 @@ function SearchBar({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const latestMonth = dayjs().startOf('month');
-  const fromDate = from ? dayjs(`${from}-01`) : null;
+  const fromDate = toMonthDate(from);
+  // What each picker shows. Usually the committed month, but a typed month
+  // that breaks the range rules stays here (shown, flagged) without ever
+  // reaching onFromChange/onToChange.
+  const [fromDraft, setFromDraft] = useMonthDraft(from);
+  const [toDraft, setToDraft] = useMonthDraft(to);
 
   // Debounced live-suggestion fetch as the user types. Deferred with
   // queueMicrotask where it sets state synchronously (matching the pattern
@@ -98,11 +124,17 @@ function SearchBar({
     onPostcodesChange(Array.from(merged));
   };
 
-  const isUnavailableMonth = (month: Dayjs, min?: Dayjs | null) => {
-    if (month.isAfter(latestMonth, 'month')) return true;
-    if (min && month.isBefore(min, 'month')) return true;
-    return false;
+  // Why a month can't be searched, or null if it can. Shared by the calendar
+  // (shouldDisableMonth) and typed input, so the keyboard can't bypass it.
+  const monthError = (month: Dayjs | null, min?: Dayjs | null): string | null => {
+    if (!month || !month.isValid()) return null;
+    if (month.isAfter(latestMonth, 'month')) return FUTURE_MONTH_ERROR;
+    if (min && month.isBefore(min, 'month')) return BEFORE_FROM_ERROR;
+    return null;
   };
+  const isUnavailableMonth = (month: Dayjs, min?: Dayjs | null) => monthError(month, min) !== null;
+  const fromError = monthError(fromDraft);
+  const toError = monthError(toDraft, fromDate);
 
   // Below the character threshold (e.g. an empty field just clicked into),
   // fall back to postcode search history so "recently searched" still shows.
@@ -203,32 +235,54 @@ function SearchBar({
         views={['year', 'month']}
         openTo="month"
         format="MMM YYYY"
-        value={fromDate}
+        value={fromDraft}
         maxDate={latestMonth}
         shouldDisableMonth={(month) => isUnavailableMonth(month)}
         onChange={(newValue: Dayjs | null) => {
-          if (!newValue || !newValue.isValid()) return;
+          setFromDraft(newValue);
+          if (!newValue || !newValue.isValid() || monthError(newValue)) return;
           const nextFrom = newValue.format('YYYY-MM');
           onFromChange(nextFrom);
-          if (to && nextFrom > to) onToChange(nextFrom);
+          // A To that was held back for being before the old From may be
+          // fine now; otherwise keep pulling To forward as before.
+          const pendingTo =
+            toDraft?.isValid() && !monthError(toDraft, newValue) ? toDraft.format('YYYY-MM') : null;
+          if (pendingTo && pendingTo !== to) onToChange(pendingTo);
+          else if (to && nextFrom > to) onToChange(nextFrom);
         }}
         sx={datePickerSx}
-        slotProps={{ textField: { size: 'small', sx: dateFieldSx } }}
+        slotProps={{
+          textField: {
+            size: 'small',
+            sx: dateFieldSx,
+            error: Boolean(fromError),
+            helperText: fromError ?? undefined,
+          },
+        }}
       />
       <DatePicker
         label="To"
         views={['year', 'month']}
         openTo="month"
         format="MMM YYYY"
-        value={to ? dayjs(`${to}-01`) : null}
+        value={toDraft}
         minDate={fromDate ?? undefined}
         maxDate={latestMonth}
         shouldDisableMonth={(month) => isUnavailableMonth(month, fromDate)}
         onChange={(newValue: Dayjs | null) => {
-          if (newValue && newValue.isValid()) onToChange(newValue.format('YYYY-MM'));
+          setToDraft(newValue);
+          if (!newValue || !newValue.isValid() || monthError(newValue, fromDate)) return;
+          onToChange(newValue.format('YYYY-MM'));
         }}
         sx={datePickerSx}
-        slotProps={{ textField: { size: 'small', sx: dateFieldSx } }}
+        slotProps={{
+          textField: {
+            size: 'small',
+            sx: dateFieldSx,
+            error: Boolean(toError),
+            helperText: toError ?? undefined,
+          },
+        }}
       />
       <Button 
         type="submit" 
